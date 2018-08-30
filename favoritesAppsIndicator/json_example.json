@@ -1,0 +1,18 @@
+{
+	"My Menu": {
+		"apps": [
+			"only_name_file.desktop",
+			"only_name_file1.desktop"
+		]
+	},
+	"apps": [
+		"only_name_file.desktop",
+		"only_name_file1.desktop"
+	],
+	"My Menu1": {
+		"apps": [
+			"only_name_file.desktop",
+			"only_name_file1.desktop"
+		]
+	}
+}

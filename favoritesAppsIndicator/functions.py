@@ -5,7 +5,7 @@ import os
 import subprocess
 
 
-class Functions():
+class Functions:
     """
         Init
     """
