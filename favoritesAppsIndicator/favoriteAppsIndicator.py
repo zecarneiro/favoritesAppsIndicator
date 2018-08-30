@@ -39,7 +39,7 @@ class FavoritesAppsIndicator:
         ]
 
         # Other
-        self.applicationID = 'grive_indicator'
+        self.applicationID = 'favorites_apps_indicator'
         self.zenity_cmd = "zenity --notification --window-icon=\"" + self.iconDefault + "\" --text="
 
         # Read Json File
