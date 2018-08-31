@@ -9,3 +9,11 @@ unzip -q favoritesAppsIndicator.zip
 ```
 cd favoritesAppsIndicator-1.0 && chmod +x install.sh && ./install.sh
 ```
+
+## Uninstall guide
+
+```
+Exit On App Indicator
+
+./opt/favoritesAppsIndicator/operation.sh uninstall
+```

@@ -1,14 +1,15 @@
-
 # Author: José M. C. Noronha
 
 # Include
 import signal
 import gi
 import json
+import threading
+import time
 from functions import Functions
 gi.require_version('Gtk', '3.0')
 gi.require_version('AppIndicator3', '0.1')
-from gi.repository import Gtk, AppIndicator3
+from gi.repository import Gtk, AppIndicator3, GObject
 
 # App Directory
 APP_DIR = "/opt/favoritesAppsIndicator"
@@ -41,10 +42,13 @@ class FavoritesAppsIndicator:
         # Other
         self.applicationID = 'favorites_apps_indicator'
         self.zenity_cmd = "zenity --notification --window-icon=\"" + self.iconDefault + "\" --text="
+        self.stop_thread = False
 
         # Read Json File
         self.json_file = self.configDir + "/favoritesApps.json"
         self.json_data = self.read_json_file()
+        self.cmd_stat_json_file = "stat -c '%y' \"" + self.json_file + "\""
+        self.stats_config_file = self.functionsClass.exec_command_get_output(self.cmd_stat_json_file)
 
         # Define Indicator
         self.indicator = AppIndicator3.Indicator.new(
@@ -53,6 +57,9 @@ class FavoritesAppsIndicator:
             AppIndicator3.IndicatorCategory.OTHER
         )
         self.indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
+
+        # start service
+        self.start_service_update_menu()
 
         # Create Set Menu
         self.indicator.set_menu(self.create_menu())
@@ -68,7 +75,7 @@ class FavoritesAppsIndicator:
         else:
             msg = "\"JSON File not exist\""
             self.functionsClass.exec_command(self.zenity_cmd + msg)
-            exit(1)
+            self.exit_indicator(None)
 
     """
         Verify is desktop file exist or not
@@ -87,7 +94,6 @@ class FavoritesAppsIndicator:
     """
     def lauch_desktop(self, source, command):
         cmd_to_launch = command + " &"
-        print(cmd_to_launch)
         self.functionsClass.exec_command(cmd_to_launch)
 
     """
@@ -210,6 +216,8 @@ class FavoritesAppsIndicator:
         Create Menu
     """
     def create_menu(self):
+        menu = Gtk.Menu()
+
         key_app = "apps"
         key_separator = "separator_"
         menu = Gtk.Menu()
@@ -248,13 +256,78 @@ class FavoritesAppsIndicator:
         return menu
 
     """
+       Update Menu
+    """
+    def update_menu(self):
+        # Security changes
+        count_changes = 0
+        max_changes = 20
+
+        # Time to check new change
+        time_sleep = 5  # 5 seconds
+
+        # Monitor json file
+        while not self.stop_thread:
+            info_stats_config_file = self.functionsClass.exec_command_get_output(self.cmd_stat_json_file)
+            if info_stats_config_file != self.stats_config_file:
+                self.stats_config_file = info_stats_config_file
+
+                # Increment changes count
+                count_changes += 1
+
+                # Exit if changes datected greater than max_changes
+                if count_changes > max_changes:
+                    break
+
+                # Get new json file
+                self.json_data = self.read_json_file()
+
+                # update menu
+                GObject.idle_add(
+                    self.indicator.set_menu,
+                    self.create_menu()
+                )
+
+            time.sleep(time_sleep)
+
+        if count_changes > max_changes:
+            # Notify
+            msg = "\"Hit Max changes on JSON File was reached.\n"
+            msg = msg + "New changes will be not detected.\n"
+            msg = msg + "Please, restart if you want to detect new changes.\""
+            self.functionsClass.exec_command(self.zenity_cmd + msg)
+            time.sleep(2)
+            exit(1)
+
+    """
+        Stop thread
+    """
+    def stop_service(self):
+        self.stop_thread = True
+        time.sleep(1)
+
+    """
+        Start thread for monitor new change on json file and update menu
+    """
+    def start_service_update_menu(self):
+        # Identify functions to run
+        thread_update_menu = threading.Thread(target=self.update_menu)
+
+        # Set daemon
+        thread_update_menu.daemon = True
+
+        # Start
+        thread_update_menu.start()
+
+    """
         Exit
     """
-    @staticmethod
-    def exit_indicator(source):
+    def exit_indicator(self, source):
+        self.stop_service()
         Gtk.main_quit()
 
 
 FavoritesAppsIndicator()
 signal.signal(signal.SIGINT, signal.SIG_DFL)
+GObject.threads_init()
 Gtk.main()

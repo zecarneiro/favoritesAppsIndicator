@@ -1,18 +1,26 @@
 {
-	"My Menu": {
-		"apps": [
-			"only_name_file.desktop",
-			"only_name_file1.desktop"
-		]
-	},
-	"apps": [
-		"only_name_file.desktop",
-		"only_name_file1.desktop"
-	],
-	"My Menu1": {
-		"apps": [
-			"only_name_file.desktop",
-			"only_name_file1.desktop"
-		]
-	}
+    "Favoritos": {
+        "apps": [
+            "cheese.desktop",
+            "usb-creator-gtk.desktop",
+            "software-properties-gtk.desktop"
+        ]
+    },
+    "Internet": {
+        "apps": [
+            "transmission-gtk.desktop",
+            "firefox.desktop",
+            "org.gnome.Software.desktop"
+        ]
+    },
+    "Office": {
+        "apps":[
+            "gnome-calculator_gnome-calculator.desktop"
+        ]
+    },
+    "separator_0": true,
+    "apps": [
+        "rhythmbox.desktop",
+        "totem.desktop"
+    ]
 }
