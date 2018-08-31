@@ -246,6 +246,11 @@ class FavoritesAppsIndicator:
         # Insert Separator
         menu.append(Gtk.SeparatorMenuItem())
 
+        # Update Menu
+        item_update_menu = Gtk.MenuItem('Update')
+        item_update_menu.connect('activate', self.update_menu)
+        menu.append(item_update_menu)
+
         # Insert Exit Menu
         item_exitindicator = Gtk.MenuItem('Exit')
         item_exitindicator.connect('activate', self.exit_indicator)
@@ -258,7 +263,21 @@ class FavoritesAppsIndicator:
     """
        Update Menu
     """
-    def update_menu(self):
+    def update_menu(self, source):
+        print("oi")
+        # Get new json file
+        self.json_data = self.read_json_file()
+
+        # update menu
+        GObject.idle_add(
+            self.indicator.set_menu,
+            self.create_menu()
+        )
+
+    """
+        Service Update Menu
+    """
+    def thread_update_menu(self):
         # Security changes
         count_changes = 0
         max_changes = 20
@@ -279,14 +298,8 @@ class FavoritesAppsIndicator:
                 if count_changes > max_changes:
                     break
 
-                # Get new json file
-                self.json_data = self.read_json_file()
-
-                # update menu
-                GObject.idle_add(
-                    self.indicator.set_menu,
-                    self.create_menu()
-                )
+                # Update menu
+                self.update_menu(None)
 
             time.sleep(time_sleep)
 
@@ -311,7 +324,7 @@ class FavoritesAppsIndicator:
     """
     def start_service_update_menu(self):
         # Identify functions to run
-        thread_update_menu = threading.Thread(target=self.update_menu)
+        thread_update_menu = threading.Thread(target=self.thread_update_menu)
 
         # Set daemon
         thread_update_menu.daemon = True
