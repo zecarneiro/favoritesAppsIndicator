@@ -264,7 +264,7 @@ class FavoritesAppsIndicator:
         max_changes = 20
 
         # Time to check new change
-        time_sleep = 5  # 5 seconds
+        time_sleep = 60  # 1 minute
 
         # Monitor json file
         while not self.stop_thread:
