@@ -65,6 +65,30 @@ class FavoritesAppsIndicator:
         self.indicator.set_menu(self.create_menu())
 
     """
+        Sort list based on name app
+    """
+    def sort_app_list(self, array_name_app_no_sorted):
+        array_name_sorted_upper = []
+        array_name_sorted = []
+
+        # Upper all name app
+        for name in array_name_app_no_sorted:
+            array_name_sorted_upper.append(name.upper())
+
+        # Sorted List Upper
+        array_name_sorted_upper = sorted(array_name_sorted_upper)
+
+        # Sorted original name
+        for upper_name in array_name_sorted_upper:
+            for original_name in array_name_app_no_sorted:
+                if upper_name == original_name.upper():
+                    array_name_sorted.append(original_name)
+
+        # Return list of name app sorted
+        return array_name_sorted
+
+
+    """
         Read JSON File
     """
     def read_json_file(self):
@@ -185,32 +209,80 @@ class FavoritesAppsIndicator:
         icon = self.get_icon(desktop_file)
         command = self.get_command(desktop_file)
 
-        return {
-            "name": name,
-            "icon": icon,
-            "command": command
-        }
+        if name is not None:
+            return {
+                name: {
+                    "icon": icon,
+                    "command": command
+                }
+            }
+        else:
+            return None
 
     """
-        Create sub menu and return sub menu
+        Return list sorted of infos apps
     """
-    def create_sub_menu(self, sub_menu_data, app_key):
-        sub_menu = Gtk.Menu()
+    def create_all_info_entry_menu(self, list_desktop_file):
+        array_app_action_info = {}
+        array_app_action_info_sorted = {}
+        array_name_app = []
 
-        for (key, value) in sub_menu_data.items():
-            if key == app_key and value:
-                for app in value:
-                    if app:
-                        info_desktop_file = self.get_desktop_necessary_info(app)
-                        if info_desktop_file["name"]:
-                            sub_menu_item = Gtk.ImageMenuItem(info_desktop_file["name"])
-                            sub_menu_item.set_image(info_desktop_file["icon"])
-                            sub_menu_item.set_always_show_image(True)
-                            sub_menu_item.connect('activate', self.lauch_desktop, info_desktop_file["command"])
-                            sub_menu.append(sub_menu_item)
+        for desktop_file in list_desktop_file:
+            info_desktop_file = self.get_desktop_necessary_info(desktop_file)
 
-        # Return sub menu
-        return sub_menu
+            # If name app exist
+            if info_desktop_file is not None:
+                name_app = list(info_desktop_file)[0]
+                array_name_app.append(name_app)
+                array_app_action_info[name_app] = info_desktop_file[name_app]
+
+        # Sort list app name
+        array_name_app = self.sort_app_list(array_name_app)
+
+        # Create sorted list to return
+        for name_app in array_name_app:
+            for (key, info) in array_app_action_info.items():
+                if name_app == key:
+                    array_app_action_info_sorted[key] = info
+                    break
+
+        # Return All info app
+        return array_app_action_info_sorted
+
+    """
+        Insert items on menu and create sub menu if necessary
+    """
+    def insert_on_sub_or_menu(self, menu, list_items, is_sub_menu=False, name_sub_menu=None):
+        # If items for submenus
+        if is_sub_menu and name_sub_menu is not None:
+            sub_menu_item = Gtk.MenuItem(name_sub_menu)
+            sub_menu = Gtk.Menu()
+
+        # Get list info apps
+        list_info_apps = self.create_all_info_entry_menu(list_items)
+
+        # Create Menu or Sub menu
+        for (name, other_info) in list_info_apps.items():
+            # Get icon and command
+            icon = other_info["icon"]
+            command = other_info["command"]
+
+            # Insert o menu
+            menu_item = Gtk.ImageMenuItem(name)
+            menu_item.set_image(icon)
+            menu_item.set_always_show_image(True)
+            menu_item.connect('activate', self.lauch_desktop, command)
+
+            # If submenu append on submenu else on menu
+            if is_sub_menu:
+                sub_menu.append(menu_item)
+            else:
+                menu.append(menu_item)
+
+        # If submenu append submenu on menu
+        if is_sub_menu and name_sub_menu is not None:
+            sub_menu_item.set_submenu(sub_menu)
+            menu.append(sub_menu_item)
 
     """
         Create Menu
@@ -224,24 +296,13 @@ class FavoritesAppsIndicator:
 
         for (key, value) in self.json_data.items():
             if key_app == key and value:
-                for app in value:
-                    info_desktop_file = self.get_desktop_necessary_info(app)
-                    if info_desktop_file["name"]:
-                        menu_item = Gtk.ImageMenuItem(info_desktop_file["name"])
-                        menu_item.set_image(info_desktop_file["icon"])
-                        menu_item.set_always_show_image(True)
-                        menu_item.connect('activate', self.lauch_desktop, info_desktop_file["command"])
-                        menu.append(menu_item)
+                self.insert_on_sub_or_menu(menu, value)
             elif key_separator in key and value:
                 menu_item = Gtk.SeparatorMenuItem()
                 menu.append(menu_item)
             else:
-                if value:
-                    sub_menu_info = self.create_sub_menu(value, key_app)
-                    if sub_menu_info:
-                        menu_item = Gtk.MenuItem(key)
-                        menu_item.set_submenu(sub_menu_info)
-                        menu.append(menu_item)
+                if value[key_app]:
+                    self.insert_on_sub_or_menu(menu, value[key_app], True, key)
 
         # Insert Separator
         menu.append(Gtk.SeparatorMenuItem())
@@ -264,7 +325,6 @@ class FavoritesAppsIndicator:
        Update Menu
     """
     def update_menu(self, source):
-        print("oi")
         # Get new json file
         self.json_data = self.read_json_file()
 
