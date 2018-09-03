@@ -334,6 +334,12 @@ class FavoritesAppsIndicator:
             self.create_menu()
         )
 
+        # Update info stats config_file
+        info_stats_config_file = self.functionsClass.exec_command_get_output(self.cmd_stat_json_file)
+        if info_stats_config_file != self.stats_config_file:
+            self.stats_config_file = info_stats_config_file
+
+
     """
         Service Update Menu
     """
