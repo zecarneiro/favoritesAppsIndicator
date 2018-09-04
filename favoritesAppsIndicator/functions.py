@@ -48,3 +48,10 @@ class Functions:
     """
     def checkDirectoryExist(self, directory):
         return os.path.isdir(directory)
+
+    """
+        Get Locale
+    """
+    def get_locale_code(self):
+        cmd_locale = "locale | grep LANGUAGE | cut -d= -f2- | cut -d ':' -f1"
+        return self.exec_command_get_output(cmd_locale)

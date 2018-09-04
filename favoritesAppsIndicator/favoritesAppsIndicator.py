@@ -43,6 +43,7 @@ class FavoritesAppsIndicator:
         self.applicationID = 'favorites_apps_indicator'
         self.zenity_cmd = "zenity --notification --window-icon=\"" + self.iconDefault + "\" --text="
         self.stop_thread = False
+        self.locale = self.functionsClass.get_locale_code()
 
         # Read Json File
         self.json_file = self.configDir + "/favoritesApps.json"
@@ -121,19 +122,37 @@ class FavoritesAppsIndicator:
         self.functionsClass.exec_command(cmd_to_launch)
 
     """
+            Return Name by type
+            type = 0 - Icon By locale
+            type = * - Default Icon
+        """
+
+    def get_icon_by_type(self, file=None, type=0):
+        command = None
+        if type == 0:
+            command = "grep 'Icon[" + self.locale + "]=' \"" + file + "\" | head -1 | cut -d \"=\" -f 2-"
+        else:
+            command = "grep 'Icon=' \"" + file + "\" | head -1 | cut -d \"=\" -f 2-"
+
+        # Return icon
+        return self.functionsClass.exec_command_get_output(command)
+
+    """
         Return Icon from desktop files
     """
     def get_icon(self, desktop_file):
         file = self.is_desktop_file_exist(desktop_file)
+        icon = None
         if file:
-            # Command to get icon
-            cmd = "cat \"" + file + "\" | grep \"Icon=\" | cut -d \"=\" -f2"
-
             # Init Image Gtk
             image = Gtk.Image()
 
-            # Get icon
-            icon = self.functionsClass.exec_command_get_output(cmd)
+            # Get icon by locale
+            icon = self.get_icon_by_type(file)
+
+            # Get default icon
+            if not icon or icon == "":
+                icon = self.get_icon_by_type(file, 1)
 
             # Select type of icon
             if self.functionsClass.checkFileExist(icon):
@@ -150,13 +169,57 @@ class FavoritesAppsIndicator:
     def get_command(self, desktop_file):
         file = self.is_desktop_file_exist(desktop_file)
         if file:
-            # Command to get lounch
+            # finds the line which starts with Exec
+            get_command = "cat \"" + file + "\" | grep 'Exec='"
 
-            # Get icon
-            command = "gtk-launch \"" + desktop_file + "\""
+            # only use the first line, in case there are multiple
+            get_command = get_command + " | head -1"
 
-            # Return image
+            # removes the Exec= from the start of the line, or get all arg after =
+            get_command = get_command + " | cut -d '=' -f 2-"
+
+            # removes any arguments - %u, %f etc
+            get_command = get_command + " | sed 's/%.//'"
+
+            # removes " around command (if present)
+            get_command = get_command + " | sed 's/^\"//g' | sed 's/\" *$//g'"
+
+            # Get command
+            command = self.functionsClass.exec_command_get_output(get_command)
+
+            # Return command
             return command
+
+    """
+        Return Name by type
+        type = 0 - Name By locale
+        type = 1 - Generic Name by locale
+        type = * - Default Name
+    """
+    def get_name_by_type(self, file=None, type=0):
+        command = None
+        if type == 0:
+            # Get name by locale #
+            command = "grep 'Name\[" + self.locale + "\]=' \"" + file + "\""
+            command = command + " | grep -v 'Generic'"  # Remove Geniric Names
+            command = command + " | cut -d '=' -f 2-"  # Get only name
+            command = command + " | head -1"  # only use the first line, in case there are multiple
+        elif type == 1:
+            # Get generic name by locale #
+            command = "grep 'GenericName\[" + self.locale + "\]=' \"" + file + "\""
+            command = command + " | cut -d '=' -f 2-"  # Get only name
+            command = command + " | head -1"  # only use the first line, in case there are multiple
+        else:
+            command = "grep 'Name=' \"" + file + "\""
+            command = command + " | grep -v 'Generic'"  # Remove Geniric Names
+            command = command + " | cut -d '=' -f 2-"  # Get only name
+            command = command + " | head -1"  # only use the first line, in case there are multiple
+
+        # Get Name
+        name = self.functionsClass.exec_command_get_output(command)
+
+        # Return name
+        return name
 
 
     """
@@ -166,36 +229,18 @@ class FavoritesAppsIndicator:
         file = self.is_desktop_file_exist(desktop_file)
         name = None
         if file:
-            # Command to get name
-            cmd = "cat \"" + file + "\" | grep \"Name=\" | cut -d \"=\" -f2"
-            cmd_full_lines = "cat \"" + file + "\" | grep \"Name=\""
-            cmd_count = "cat \"" + file + "\" | grep -c \"Name=\" | cut -d \"=\" -f2"
+            # Get name by locale #
+            name = self.get_name_by_type(file)
 
-            # Get name
-            if int(self.functionsClass.exec_command_get_output(cmd_count)) > 1:
-                # Get full lines with names
-                string_full_lines = self.functionsClass.exec_command_get_output(cmd_full_lines)
-                array_full_lines = string_full_lines.split('\n')
+            # Get Generic name by locale if name not set #
+            if not name or name == "":
+                name = self.get_name_by_type(file, 1)
 
-                # Get names
-                string_names = self.functionsClass.exec_command_get_output(cmd)
-                array_name = string_names.split('\n')
+            # Get Default name if name by locale and generic name not set
+            if not name or name == "":
+                name = self.get_name_by_type(file, 2)
 
-                # Get real name
-                name_saved = False
-                for line in array_full_lines:
-                    for real_name in array_name:
-                        name_in_line = "Name=" + real_name
-                        if line == name_in_line:
-                            name = real_name
-                            name_saved = True
-
-                    if name_saved:
-                        break
-            else:
-                name = self.functionsClass.exec_command_get_output(cmd)
-
-            if not name:
+            if not name or name == "":
                 name = None
 
         # Return name App
@@ -211,10 +256,9 @@ class FavoritesAppsIndicator:
 
         if name is not None:
             return {
-                name: {
-                    "icon": icon,
-                    "command": command
-                }
+                "name": name,
+                "icon": icon,
+                "command": command
             }
         else:
             return None
@@ -223,8 +267,8 @@ class FavoritesAppsIndicator:
         Return list sorted of infos apps
     """
     def create_all_info_entry_menu(self, list_desktop_file):
-        array_app_action_info = {}
-        array_app_action_info_sorted = {}
+        array_app_action_info = []
+        array_app_action_info_sorted = []
         array_name_app = []
 
         for desktop_file in list_desktop_file:
@@ -232,19 +276,18 @@ class FavoritesAppsIndicator:
 
             # If name app exist
             if info_desktop_file is not None:
-                name_app = list(info_desktop_file)[0]
+                name_app = info_desktop_file["name"]
                 array_name_app.append(name_app)
-                array_app_action_info[name_app] = info_desktop_file[name_app]
+                array_app_action_info.append(info_desktop_file)
 
         # Sort list app name
         array_name_app = self.sort_app_list(array_name_app)
 
         # Create sorted list to return
         for name_app in array_name_app:
-            for (key, info) in array_app_action_info.items():
-                if name_app == key:
-                    array_app_action_info_sorted[key] = info
-                    break
+            for value in array_app_action_info:
+                if name_app == value["name"]:
+                    array_app_action_info_sorted.append(value)
 
         # Return All info app
         return array_app_action_info_sorted
@@ -262,10 +305,11 @@ class FavoritesAppsIndicator:
         list_info_apps = self.create_all_info_entry_menu(list_items)
 
         # Create Menu or Sub menu
-        for (name, other_info) in list_info_apps.items():
+        for value in list_info_apps:
             # Get icon and command
-            icon = other_info["icon"]
-            command = other_info["command"]
+            name = value["name"]
+            icon = value["icon"]
+            command = value["command"]
 
             # Insert o menu
             menu_item = Gtk.ImageMenuItem(name)
