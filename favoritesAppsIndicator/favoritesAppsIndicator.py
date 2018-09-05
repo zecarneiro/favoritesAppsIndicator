@@ -181,8 +181,8 @@ class FavoritesAppsIndicator:
             # removes any arguments - %u, %f etc
             get_command = get_command + " | sed 's/%.//'"
 
-            # removes " around command (if present)
-            get_command = get_command + " | sed 's/^\"//g' | sed 's/\" *$//g'"
+            # removes " around command (if present) - Activate if necessary
+            # get_command = get_command + " | sed 's/^\"//g' | sed 's/\" *$//g'"
 
             # Get command
             command = self.functionsClass.exec_command_get_output(get_command)
