@@ -168,7 +168,13 @@ class FavoritesAppsIndicator:
     """
     def get_command(self, desktop_file):
         file = self.is_desktop_file_exist(desktop_file)
+        command = None
+
         if file:
+            # Check if to run on terminal
+            cmd_get_run_on_terminal = "grep 'Terminal=' \"" + file + "\" | cut -d '=' -f 2-"
+            is_launch_terminal = self.functionsClass.exec_command_get_output(cmd_get_run_on_terminal)
+
             # finds the line which starts with Exec
             get_command = "cat \"" + file + "\" | grep 'Exec='"
 
@@ -184,11 +190,14 @@ class FavoritesAppsIndicator:
             # removes " around command (if present) - Activate if necessary
             # get_command = get_command + " | sed 's/^\"//g' | sed 's/\" *$//g'"
 
-            # Get command
-            command = self.functionsClass.exec_command_get_output(get_command)
+            # Get command on desktop file
+            command_on_desktop_file = self.functionsClass.exec_command_get_output(get_command)
 
             # Return command
-            return command
+            if is_launch_terminal == "True" or is_launch_terminal == "true":
+                return "x-terminal-emulator -e \"" + command_on_desktop_file + "\""
+            else:
+                return command_on_desktop_file
 
     """
         Return Name by type
