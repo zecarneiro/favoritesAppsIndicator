@@ -193,7 +193,6 @@ class FavoritesAppsIndicator:
     """
         Return Name by type
         type = 0 - Name By locale
-        type = 1 - Generic Name by locale
         type = * - Default Name
     """
     def get_name_by_type(self, file=None, type=0):
@@ -202,11 +201,6 @@ class FavoritesAppsIndicator:
             # Get name by locale #
             command = "grep 'Name\[" + self.locale + "\]=' \"" + file + "\""
             command = command + " | grep -v 'Generic'"  # Remove Geniric Names
-            command = command + " | cut -d '=' -f 2-"  # Get only name
-            command = command + " | head -1"  # only use the first line, in case there are multiple
-        elif type == 1:
-            # Get generic name by locale #
-            command = "grep 'GenericName\[" + self.locale + "\]=' \"" + file + "\""
             command = command + " | cut -d '=' -f 2-"  # Get only name
             command = command + " | head -1"  # only use the first line, in case there are multiple
         else:
@@ -232,13 +226,9 @@ class FavoritesAppsIndicator:
             # Get name by locale #
             name = self.get_name_by_type(file)
 
-            # Get Generic name by locale if name not set #
+            # Get Default name if name by locale not set
             if not name or name == "":
                 name = self.get_name_by_type(file, 1)
-
-            # Get Default name if name by locale and generic name not set
-            if not name or name == "":
-                name = self.get_name_by_type(file, 2)
 
             if not name or name == "":
                 name = None
