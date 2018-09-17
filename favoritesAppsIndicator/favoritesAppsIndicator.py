@@ -205,15 +205,17 @@ class FavoritesAppsIndicator:
         type = * - Default Name
     """
     def get_name_by_type(self, file=None, type=0):
-        command = None
+        # Remove all line after(include the line) contain "Desktop Action"
+        command = "sed -n '/Desktop Action/q;p' \"" + file + "\""
+
         if type == 0:
             # Get name by locale #
-            command = "grep 'Name\[" + self.locale + "\]=' \"" + file + "\""
+            command = command + " | grep 'Name\[" + self.locale + "\]='"
             command = command + " | grep -v 'Generic'"  # Remove Geniric Names
             command = command + " | cut -d '=' -f 2-"  # Get only name
             command = command + " | head -1"  # only use the first line, in case there are multiple
         else:
-            command = "grep 'Name=' \"" + file + "\""
+            command = command + " | grep 'Name='"
             command = command + " | grep -v 'Generic'"  # Remove Geniric Names
             command = command + " | cut -d '=' -f 2-"  # Get only name
             command = command + " | head -1"  # only use the first line, in case there are multiple
