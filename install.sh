@@ -15,7 +15,7 @@ sudo cp -r "$nameAppPath" /opt
 sudo chmod -R 755 "$appDir"
 
 # Zenity
-eval "$functionsBashFile -i \"zenity python3 python3-gi libappindicator1 libappindicator-dev gir1.2-appindicator3-0.1\""
+eval "$functionsBashFile -i \"zenity python3 python3-gi libappindicator1 libappindicator-dev libappindicator3-dev gir1.2-appindicator3-0.1\""
 
 # Install app
 eval "$operationBashFile install"
