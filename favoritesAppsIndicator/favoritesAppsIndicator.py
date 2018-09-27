@@ -195,7 +195,10 @@ class FavoritesAppsIndicator:
 
             # Return command
             if is_launch_terminal == "True" or is_launch_terminal == "true":
-                return "x-terminal-emulator -e eval \"" + command_on_desktop_file + "\""
+                cmd_to_get_default_terminal = "readlink -f $(command -v x-terminal-emulator)"
+                default_terminal = self.functionsClass.exec_command_get_output(cmd_to_get_default_terminal)
+
+                return default_terminal + " -e \"" + command_on_desktop_file + "\""
             else:
                 return command_on_desktop_file
 
