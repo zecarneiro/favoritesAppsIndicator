@@ -195,7 +195,7 @@ class FavoritesAppsIndicator:
 
             # Return command
             if is_launch_terminal == "True" or is_launch_terminal == "true":
-                return "x-terminal-emulator -e \"" + command_on_desktop_file + "\""
+                return "x-terminal-emulator -e eval \"" + command_on_desktop_file + "\""
             else:
                 return command_on_desktop_file
 
