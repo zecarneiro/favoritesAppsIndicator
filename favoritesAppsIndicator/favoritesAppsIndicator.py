@@ -36,6 +36,7 @@ class FavoritesAppsIndicator:
             "/usr/share/applications/",  # System directory
             self.home + "/.local/share/applications/",  # User local directory
             "/var/lib/flatpak/exports/share/applications/",  # Flatpak
+            self.home + "/.local/share/flatpak/exports/share/applications/", # Flatpak
             "/var/lib/snapd/desktop/applications/"  # Snap
         ]
 
