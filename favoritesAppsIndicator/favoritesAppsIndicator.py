@@ -104,6 +104,25 @@ class FavoritesAppsIndicator:
             self.exit_indicator(None)
 
     """
+        Check if Operating System is permited
+    """
+    def check_permited_operating_system(self):
+        not_permited_so_list = [
+            'Linux Mint'
+        ]
+        is_permited = True
+
+        for operating_system in not_permited_so_list:
+            command = "lsb_release -a | grep -ci \"" + operating_system + "\""
+            result = int(self.functionsClass.exec_command_get_output(command))
+            if (result > 0):
+                is_permited = False
+                break
+
+        # Return result
+        return is_permited
+
+    """
         Verify is desktop file exist or not
     """
     def is_desktop_file_exist(self, desktop_file):
@@ -123,20 +142,23 @@ class FavoritesAppsIndicator:
         self.functionsClass.exec_command(cmd_to_launch)
 
     """
-            Return Name by type
-            type = 0 - Icon By locale
-            type = * - Default Icon
-        """
-
+        Return Name by type
+        type = 0 - Icon By locale
+        type = * - Default Icon
+    """
     def get_icon_by_type(self, file=None, type=0):
-        command = None
-        if type == 0:
-            command = "grep 'Icon[" + self.locale + "]=' \"" + file + "\" | head -1 | cut -d \"=\" -f 2-"
-        else:
-            command = "grep 'Icon=' \"" + file + "\" | head -1 | cut -d \"=\" -f 2-"
+        icon = ""
+        if self.check_permited_operating_system():
+            command = None
+            if type == 0:
+                command = "grep 'Icon[" + self.locale + "]=' \"" + file + "\" | head -1 | cut -d \"=\" -f 2-"
+            else:
+                command = "grep 'Icon=' \"" + file + "\" | head -1 | cut -d \"=\" -f 2-"
+
+            icon = self.functionsClass.exec_command_get_output(command)
 
         # Return icon
-        return self.functionsClass.exec_command_get_output(command)
+        return icon
 
     """
         Return Icon from desktop files
