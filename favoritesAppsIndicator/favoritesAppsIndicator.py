@@ -410,6 +410,10 @@ class FavoritesAppsIndicator:
         if info_stats_config_file != self.stats_config_file:
             self.stats_config_file = info_stats_config_file
 
+        command = self.zenity_cmd + "\"Update Favorites Apps Done.\""
+        print(command)
+        self.functionsClass.exec_command(command)
+
 
     """
         Service Update Menu
