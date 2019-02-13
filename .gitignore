@@ -4,3 +4,4 @@ favoritesAppsIndicator/\.idea/
 favoritesAppsIndicator/__pycache__/
 
 \.idea/
+.vscode/

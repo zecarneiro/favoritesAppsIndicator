@@ -360,17 +360,14 @@ class FavoritesAppsIndicator:
     """
     def create_menu(self):
         menu = Gtk.Menu()
-
         key_app = "apps"
         key_separator = "separator_"
-        menu = Gtk.Menu()
 
         for (key, value) in self.json_data.items():
             if key_app == key and value:
                 self.insert_on_sub_or_menu(menu, value)
             elif key_separator in key and value:
-                menu_item = Gtk.SeparatorMenuItem()
-                menu.append(menu_item)
+                menu.append(Gtk.SeparatorMenuItem())
             else:
                 if value[key_app]:
                     self.insert_on_sub_or_menu(menu, value[key_app], True, key)
