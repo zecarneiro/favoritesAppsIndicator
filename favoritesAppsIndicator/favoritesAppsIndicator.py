@@ -6,6 +6,7 @@ import gi
 import json
 import threading
 import time
+import datetime
 from functions import Functions
 gi.require_version('Gtk', '3.0')
 gi.require_version('AppIndicator3', '0.1')
@@ -31,26 +32,27 @@ class FavoritesAppsIndicator:
         # Icons
         self.iconDefault = APP_DIR + "/icon/favoritesApps.png"
 
-        # List path for desktop files
-        self.path_desktop_files = [
-            "/usr/share/applications/",  # System directory
-            self.home + "/.local/share/applications/",  # User local directory
-            "/var/lib/flatpak/exports/share/applications/",  # Flatpak
-            self.home + "/.local/share/flatpak/exports/share/applications/", # Flatpak
-            "/var/lib/snapd/desktop/applications/"  # Snap
-        ]
-
         # Other
         self.applicationID = 'favorites_apps_indicator'
         self.zenity_cmd = "zenity --notification --window-icon=\"" + self.iconDefault + "\" --text="
         self.stop_thread = False
         self.locale = self.functionsClass.get_locale_code()
+        self.homeIdentifyString = "$HOME"
+
+        # Keys
+        self.key_comment_JsonFile = "INFO"
+        self.key_with_path = "desktopFilesPath"
+        self.key_with_files_manager = "filesManagerFavorites"
 
         # Read Json File
         self.json_file = self.configDir + "/favoritesApps.json"
         self.json_data = self.read_json_file()
         self.cmd_stat_json_file = "stat -c '%y' \"" + self.json_file + "\""
         self.stats_config_file = self.functionsClass.exec_command_get_output(self.cmd_stat_json_file)
+
+        # List path for desktop files
+        self.path_desktop_files = []
+        self.get_desktop_path(None)
 
         # Define Indicator
         self.indicator = AppIndicator3.Indicator.new(
@@ -65,6 +67,91 @@ class FavoritesAppsIndicator:
 
         # Create Set Menu
         self.indicator.set_menu(self.create_menu())
+
+    """
+        [Set Log Error]
+    """
+    def set_log(self, _type, _error_log):
+        _type = _type + " " + str(datetime.datetime.now())
+        localization_log_file = self.home + "/.favoritesAppsIndicatorLog.log"
+        command = "echo \"" + _type + ": " + _error_log + "\" | tee -a " + localization_log_file + " > /dev/null"
+        self.functionsClass.exec_command(command)
+    
+    """[Set path of desktop files]
+    
+    Returns:
+        [type] -- [description]
+    """
+
+    def get_desktop_path(self, object_path):
+        if self.key_with_path in self.json_data.keys():
+            json_paths = self.json_data[self.key_with_path]
+            for (key, value) in json_paths.items():
+                if self.key_comment_JsonFile != key:
+                    value = str(value)
+                    value = value.replace(self.homeIdentifyString, self.home)
+                    self.path_desktop_files.append(value)
+
+            # Delete element
+            self.json_data.pop(self.key_with_path, None)
+
+    def get_bookmarks_path(self, menu):
+        if self.key_with_files_manager in self.json_data.keys():
+            json_paths = self.json_data[self.key_with_files_manager]
+            key_command = "filesManagerCmd"
+            key_bookmark_file = "bookmarkFile"
+            key_name_menu = "Name"
+            if key_command in json_paths.keys() and key_bookmark_file in json_paths.keys() and key_name_menu in json_paths.keys():
+                bookmark_file = str(json_paths[key_bookmark_file])
+                bookmark_file = bookmark_file.replace(self.homeIdentifyString, self.home)
+                command = json_paths[key_command]
+
+                # Name Menu
+                name_menu = "Localizations"
+                if json_paths[key_name_menu] != "":
+                    name_menu = json_paths[key_name_menu]
+
+                # Create menu localizations and read file
+                if self.functionsClass.checkFileExist(bookmark_file):
+                    
+
+                    # Create menu localizations
+                    sub_menu_item = Gtk.MenuItem(name_menu)
+                    sub_menu = Gtk.Menu()
+                    
+                    # Read file
+                    _file = open(bookmark_file, 'r')
+                    lines = list(_file.readlines())
+                    for line in lines:
+                        # Get name of Item
+                        name_item = ""
+                        array_line = line.split(" ", 1)
+                        _file.readlines()
+                        index = 0
+                        for value in array_line:
+                            if index == 0:
+                                index += 1
+                            else:
+                                name_item += " " + value
+                        
+                        # Insert o menu
+                        name_item = name_item.strip('\t\n\r')
+                        menu_item = Gtk.MenuItem(name_item)
+                        line = line.strip('\t\n\r')
+
+                        if len(array_line) > 1:
+                            command_to_menu = command + " \"" + array_line[0] + "\""
+                            menu_item.connect('activate', self.lauch_desktop, command_to_menu)
+
+                            # Insert on sub menu
+                            sub_menu.append(menu_item)
+
+                    _file.close()
+                    sub_menu_item.set_submenu(sub_menu)
+                    menu.append(sub_menu_item)             
+
+            # Delete element
+            self.json_data.pop(self.key_with_files_manager, None)
 
     """
         Sort list based on name app
@@ -94,14 +181,18 @@ class FavoritesAppsIndicator:
         Read JSON File
     """
     def read_json_file(self):
-        if self.functionsClass.checkFileExist(self.json_file):
+        json_data = {}
+        try:
             json_file = open(self.json_file, 'r')
             json_data = json.load(json_file)
-            return json_data
-        else:
-            msg = "\"JSON File not exist\""
+        except ValueError as e:
+            msg = "\"ERROR on read JSON File\""
             self.functionsClass.exec_command(self.zenity_cmd + msg)
-            self.exit_indicator(None)
+            self.set_log('READ JSON', str(e.args))
+
+        json_file.close()
+        return json_data
+            
 
     """
         Check if Operating System is permited
@@ -364,16 +455,23 @@ class FavoritesAppsIndicator:
         key_separator = "separator_"
 
         for (key, value) in self.json_data.items():
-            if key_app == key and value:
-                self.insert_on_sub_or_menu(menu, value)
-            elif key_separator in key and value:
-                menu.append(Gtk.SeparatorMenuItem())
-            else:
-                if value[key_app]:
-                    self.insert_on_sub_or_menu(menu, value[key_app], True, key)
+            is_invalid_keys = self.key_comment_JsonFile in key or self.key_with_files_manager != key or self.key_with_path != key
+            print(is_invalid_keys)
+            print(key)
+            if not is_invalid_keys:
+                if key_app == key and value:
+                    self.insert_on_sub_or_menu(menu, value)
+                elif key_separator in key and value:
+                    menu.append(Gtk.SeparatorMenuItem())
+                else:
+                    if value[key_app]:
+                        self.insert_on_sub_or_menu(menu, value[key_app], True, key)
 
         # Insert Separator
         menu.append(Gtk.SeparatorMenuItem())
+
+        # Insert bookmarks path
+        self.get_bookmarks_path(menu)
 
         # Update Menu
         item_update_menu = Gtk.MenuItem('Update')
