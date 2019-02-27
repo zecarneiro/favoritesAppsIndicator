@@ -455,23 +455,28 @@ class FavoritesAppsIndicator:
         key_separator = "separator_"
 
         for (key, value) in self.json_data.items():
-            is_invalid_keys = self.key_comment_JsonFile in key or self.key_with_files_manager != key or self.key_with_path != key
-            print(is_invalid_keys)
-            print(key)
-            if not is_invalid_keys:
-                if key_app == key and value:
-                    self.insert_on_sub_or_menu(menu, value)
-                elif key_separator in key and value:
-                    menu.append(Gtk.SeparatorMenuItem())
-                else:
-                    if value[key_app]:
-                        self.insert_on_sub_or_menu(menu, value[key_app], True, key)
+            if self.key_comment_JsonFile in key:
+                pass
+            elif self.key_with_files_manager == key:
+                pass
+            elif self.key_with_path == key:
+                pass
+            elif key_app == key and value:
+                self.insert_on_sub_or_menu(menu, value)
+            elif key_separator in key and value:
+                menu.append(Gtk.SeparatorMenuItem())
+            else:
+                if value[key_app]:
+                    self.insert_on_sub_or_menu(menu, value[key_app], True, key)
 
         # Insert Separator
         menu.append(Gtk.SeparatorMenuItem())
 
         # Insert bookmarks path
         self.get_bookmarks_path(menu)
+
+        # Insert Separator
+        menu.append(Gtk.SeparatorMenuItem())
 
         # Update Menu
         item_update_menu = Gtk.MenuItem('Update')
