@@ -7,6 +7,7 @@ import json
 import threading
 import time
 import datetime
+import urllib.parse
 from functions import Functions
 gi.require_version('Gtk', '3.0')
 gi.require_version('AppIndicator3', '0.1')
@@ -82,7 +83,6 @@ class FavoritesAppsIndicator:
     Returns:
         [type] -- [description]
     """
-
     def get_desktop_path(self, object_path):
         if self.key_with_path in self.json_data.keys():
             json_paths = self.json_data[self.key_with_path]
@@ -114,7 +114,6 @@ class FavoritesAppsIndicator:
                 # Create menu localizations and read file
                 if self.functionsClass.checkFileExist(bookmark_file):
                     
-
                     # Create menu localizations
                     sub_menu_item = Gtk.MenuItem(name_menu)
                     sub_menu = Gtk.Menu()
@@ -125,30 +124,53 @@ class FavoritesAppsIndicator:
                     for line in lines:
                         # Get name of Item
                         name_item = ""
-                        array_line = line.split(" ", 1)
-                        _file.readlines()
-                        index = 0
-                        for value in array_line:
-                            if index == 0:
-                                index += 1
-                            else:
-                                name_item += " " + value
+                        array_line = line.split(" ")
+
+                        if len(array_line) == 1:
+                            array_line_with_len_one = line.split("/")
+                            name_item = array_line_with_len_one[-1] # Last element
+                        else:
+                            index = 0
+                            for value in array_line:
+                                if index == 0:
+                                    index += 1
+                                else:
+                                    name_item += " " + value
                         
                         # Insert o menu
+                        _decode_status = False
+                        try:
+                            name_item = urllib.parse.unquote(name_item)
+                            _decode_status = True
+                        except Exception as e:
+                            self.set_log('Error convert url character', str(e.args))
+
+                        if not _decode_status:
+                            try:
+                                name_item = name_item.decode('UTF-8', 'strict')
+                                _decode_status = True
+                            except Exception as e:
+                                self.set_log('Error convert string character', str(e.args))
+                        
+                        # Trim character
                         name_item = name_item.strip('\t\n\r')
-                        menu_item = Gtk.MenuItem(name_item)
                         line = line.strip('\t\n\r')
+                        array_line[0] = str(array_line[0]).strip('\t\n\r')
+                        
+                        # Activate command and insert on menu item
+                        menu_item = Gtk.MenuItem(name_item)                        
+                        command_to_menu = command + " \"" + array_line[0] + "\""
+                        menu_item.connect('activate', self.lauch_desktop, command_to_menu)
 
-                        if len(array_line) > 1:
-                            command_to_menu = command + " \"" + array_line[0] + "\""
-                            menu_item.connect('activate', self.lauch_desktop, command_to_menu)
-
-                            # Insert on sub menu
-                            sub_menu.append(menu_item)
-
-                    _file.close()
+                        # Insert on sub menu
+                        sub_menu.append(menu_item)
+                    
+                    # Insert sub menu on menu
                     sub_menu_item.set_submenu(sub_menu)
-                    menu.append(sub_menu_item)             
+                    menu.append(sub_menu_item)
+
+                    # Close file
+                    _file.close()            
 
             # Delete element
             self.json_data.pop(self.key_with_files_manager, None)
@@ -185,7 +207,7 @@ class FavoritesAppsIndicator:
         try:
             json_file = open(self.json_file, 'r')
             json_data = json.load(json_file)
-        except ValueError as e:
+        except Exception as e:
             msg = "\"ERROR on read JSON File\""
             self.functionsClass.exec_command(self.zenity_cmd + msg)
             self.set_log('READ JSON', str(e.args))
