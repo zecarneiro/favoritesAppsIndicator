@@ -323,6 +323,9 @@ class FavoritesAppsIndicator:
             # removes any arguments - %u, %f etc
             get_command = get_command + " | sed 's/%.//'"
 
+            # removes any arguments - '--'
+            get_command = get_command + " | sed 's/--.*//'"
+
             # removes " around command (if present) - Activate if necessary
             # get_command = get_command + " | sed 's/^\"//g' | sed 's/\" *$//g'"
 
