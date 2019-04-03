@@ -8,6 +8,8 @@ import threading
 import time
 import datetime
 import urllib.parse
+import os
+from models import DesktopFilesInterface, AppInfoInterface, FavoritesFilesManagerInterface
 from functions import Functions
 gi.require_version('Gtk', '3.0')
 gi.require_version('AppIndicator3', '0.1')
@@ -16,21 +18,21 @@ from gi.repository import Gtk, AppIndicator3, GObject
 # App Directory
 APP_DIR = "/opt/favoritesAppsIndicator"
 
-
 class FavoritesAppsIndicator:
     """
         Init
     """
     def __init__(self):
+        self.path_desktop_files = DesktopFilesInterface()
+        self.favorites_files_manager = FavoritesFilesManagerInterface()
+        self.app_info = [AppInfoInterface()]
 
         # Init functions
         self.functionsClass = Functions(APP_DIR)
 
-        # Get home path
-        self.home = self.functionsClass.exec_command_get_output("echo $HOME")
+        # Set Config files
+        self.home = os.path.expanduser("~")
         self.configDir = self.home + "/.config/favoritesAppsIndicator"
-
-        # Icons
         self.iconDefault = APP_DIR + "/icon/favoritesApps.png"
 
         # Other
@@ -46,6 +48,7 @@ class FavoritesAppsIndicator:
         self.key_with_files_manager = "filesManagerFavorites"
 
         # Read Json File
+        self.appInfo = []
         self.json_file = self.configDir + "/favoritesApps.json"
         self.json_data = self.read_json_file()
         self.cmd_stat_json_file = "stat -c '%y' \"" + self.json_file + "\""
@@ -69,12 +72,19 @@ class FavoritesAppsIndicator:
         # Create Set Menu
         self.indicator.set_menu(self.create_menu())
 
+    def __set_path_desktop_files(self):
+        self.path_desktop_files.system_ = "/usr/share/applications/"
+        self.path_desktop_files.user_ = self.__homePath + "/.local/share/applications/"
+        self.path_desktop_files.snaps_ = "/var/lib/snapd/desktop/applications/"
+        self.path_desktop_files.flatpak_ = "/var/lib/flatpak/exports/share/applications/"
+        self.path_desktop_files.flatpak_user_ = self.__homePath + "/.local/share/flatpak/exports/share/applications/"
+
     """
         [Set Log Error]
     """
     def set_log(self, _type, _error_log):
         _type = _type + " " + str(datetime.datetime.now())
-        localization_log_file = self.home + "/.favoritesAppsIndicatorLog.log"
+        localization_log_file = self.object_pathhome + "/.favoritesAppsIndicatorLog.log"
         command = "echo \"" + _type + ": " + _error_log + "\" | tee -a " + localization_log_file + " > /dev/null"
         self.functionsClass.exec_command(command)
     
