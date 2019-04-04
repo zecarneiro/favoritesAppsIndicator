@@ -23,40 +23,34 @@ class FavoritesAppsIndicator:
         Init
     """
     def __init__(self):
+        # Init other class
         self.path_desktop_files = DesktopFilesInterface()
         self.favorites_files_manager = FavoritesFilesManagerInterface()
         self.app_info = [AppInfoInterface()]
-
-        # Init functions
-        self.functionsClass = Functions(APP_DIR)
+        self.functions = Functions(APP_DIR)
 
         # Set Config files
         self.home = os.path.expanduser("~")
         self.configDir = self.home + "/.config/favoritesAppsIndicator"
         self.iconDefault = APP_DIR + "/icon/favoritesApps.png"
 
+        # Read Json File
+        self.json_file = self.configDir + "/favoritesApps.json"
+        self.json_data = self.functions.read_json_file(self.json_file)
+        self.cmd_stat_json_file = "stat -c '%y' \"" + self.json_file + "\""
+        self.stats_config_file = self.functions.exec_command_get_output(self.cmd_stat_json_file)
+
         # Other
         self.applicationID = 'favorites_apps_indicator'
         self.zenity_cmd = "zenity --notification --window-icon=\"" + self.iconDefault + "\" --text="
         self.stop_thread = False
-        self.locale = self.functionsClass.get_locale_code()
+        self.locale = self.functions.get_locale_code()
         self.homeIdentifyString = "$HOME"
 
         # Keys
         self.key_comment_JsonFile = "INFO"
         self.key_with_path = "desktopFilesPath"
         self.key_with_files_manager = "filesManagerFavorites"
-
-        # Read Json File
-        self.appInfo = []
-        self.json_file = self.configDir + "/favoritesApps.json"
-        self.json_data = self.read_json_file()
-        self.cmd_stat_json_file = "stat -c '%y' \"" + self.json_file + "\""
-        self.stats_config_file = self.functionsClass.exec_command_get_output(self.cmd_stat_json_file)
-
-        # List path for desktop files
-        self.path_desktop_files = []
-        self.get_desktop_path(None)
 
         # Define Indicator
         self.indicator = AppIndicator3.Indicator.new(
@@ -72,13 +66,6 @@ class FavoritesAppsIndicator:
         # Create Set Menu
         self.indicator.set_menu(self.create_menu())
 
-    def __set_path_desktop_files(self):
-        self.path_desktop_files.system_ = "/usr/share/applications/"
-        self.path_desktop_files.user_ = self.__homePath + "/.local/share/applications/"
-        self.path_desktop_files.snaps_ = "/var/lib/snapd/desktop/applications/"
-        self.path_desktop_files.flatpak_ = "/var/lib/flatpak/exports/share/applications/"
-        self.path_desktop_files.flatpak_user_ = self.__homePath + "/.local/share/flatpak/exports/share/applications/"
-
     """
         [Set Log Error]
     """
@@ -87,23 +74,6 @@ class FavoritesAppsIndicator:
         localization_log_file = self.object_pathhome + "/.favoritesAppsIndicatorLog.log"
         command = "echo \"" + _type + ": " + _error_log + "\" | tee -a " + localization_log_file + " > /dev/null"
         self.functionsClass.exec_command(command)
-    
-    """[Set path of desktop files]
-    
-    Returns:
-        [type] -- [description]
-    """
-    def get_desktop_path(self, object_path):
-        if self.key_with_path in self.json_data.keys():
-            json_paths = self.json_data[self.key_with_path]
-            for (key, value) in json_paths.items():
-                if self.key_comment_JsonFile != key:
-                    value = str(value)
-                    value = value.replace(self.homeIdentifyString, self.home)
-                    self.path_desktop_files.append(value)
-
-            # Delete element
-            self.json_data.pop(self.key_with_path, None)
 
     def get_bookmarks_path(self, menu):
         if self.key_with_files_manager in self.json_data.keys():
@@ -207,23 +177,6 @@ class FavoritesAppsIndicator:
 
         # Return list of name app sorted
         return array_name_sorted
-
-
-    """
-        Read JSON File
-    """
-    def read_json_file(self):
-        json_data = {}
-        try:
-            json_file = open(self.json_file, 'r')
-            json_data = json.load(json_file)
-        except Exception as e:
-            msg = "\"ERROR on read JSON File\""
-            self.functionsClass.exec_command(self.zenity_cmd + msg)
-            self.set_log('READ JSON', str(e.args))
-
-        json_file.close()
-        return json_data
             
 
     """

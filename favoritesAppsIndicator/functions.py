@@ -55,3 +55,19 @@ class Functions:
     def get_locale_code(self):
         cmd_locale = "locale | grep LANGUAGE | cut -d= -f2- | cut -d ':' -f1"
         return self.exec_command_get_output(cmd_locale)
+
+    """
+        Read JSON File
+    """
+    def read_json_file(self, _file):
+        json_data = {}
+        try:
+            json_file = open(_file, 'r')
+            json_data = json.load(json_file)
+        except Exception as e:
+            msg = "\"ERROR on read JSON File\""
+            self.functionsClass.exec_command(self.zenity_cmd + msg)
+            self.set_log('READ JSON', str(e.args))
+
+        _file.close()
+        return json_data

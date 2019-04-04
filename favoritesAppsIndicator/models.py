@@ -44,13 +44,18 @@ class FavoritesFilesManagerInterface:
     key_in_json: str
     __home_path: str
 
-    def __init__(self):
+    def __init__(self, json_data):
         self.__home_path = os.path.expanduser("~")
         self.name = "Localizações"
         self.files_manager_cmd = "nautilus"
         self.bookmark_file = self.__home_path + "/.config/gtk-3.0/bookmarks"
         self.key_to_replace = "$HOME"
         self.key_in_json = "filesManagerFavorites"
+        self.__getAllData(json_data)
+
+    def __getAllData(self, json_data):
+        
+
 
 """[summary]
     Interface for desktop files
