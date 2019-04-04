@@ -3,7 +3,6 @@
 # Include
 import signal
 import gi
-import json
 import threading
 import time
 import datetime
@@ -23,16 +22,13 @@ class FavoritesAppsIndicator:
         Init
     """
     def __init__(self):
-        # Init other class
-        self.path_desktop_files = DesktopFilesInterface()
-        self.favorites_files_manager = FavoritesFilesManagerInterface()
-        self.app_info = [AppInfoInterface()]
-        self.functions = Functions(APP_DIR)
-
         # Set Config files
         self.home = os.path.expanduser("~")
         self.configDir = self.home + "/.config/favoritesAppsIndicator"
         self.iconDefault = APP_DIR + "/icon/favoritesApps.png"
+
+        # Init functions class
+        self.functions = Functions(APP_DIR, self.iconDefault)
 
         # Read Json File
         self.json_file = self.configDir + "/favoritesApps.json"
@@ -40,17 +36,20 @@ class FavoritesAppsIndicator:
         self.cmd_stat_json_file = "stat -c '%y' \"" + self.json_file + "\""
         self.stats_config_file = self.functions.exec_command_get_output(self.cmd_stat_json_file)
 
+        # Init other class
+        self.path_desktop_files = DesktopFilesInterface()
+        self.favorites_files_manager = FavoritesFilesManagerInterface(self.json_data)
+        self.app_info = AppInfoInterface(APP_DIR, self.iconDefault)
+
         # Other
         self.applicationID = 'favorites_apps_indicator'
-        self.zenity_cmd = "zenity --notification --window-icon=\"" + self.iconDefault + "\" --text="
         self.stop_thread = False
         self.locale = self.functions.get_locale_code()
-        self.homeIdentifyString = "$HOME"
 
         # Keys
         self.key_comment_JsonFile = "INFO"
-        self.key_with_path = "desktopFilesPath"
-        self.key_with_files_manager = "filesManagerFavorites"
+        self.key_app_no_menu = "EXTERNALAPP"
+        self.key_separator = "separator_"
 
         # Define Indicator
         self.indicator = AppIndicator3.Indicator.new(
@@ -66,118 +65,67 @@ class FavoritesAppsIndicator:
         # Create Set Menu
         self.indicator.set_menu(self.create_menu())
 
-    """
-        [Set Log Error]
-    """
-    def set_log(self, _type, _error_log):
-        _type = _type + " " + str(datetime.datetime.now())
-        localization_log_file = self.object_pathhome + "/.favoritesAppsIndicatorLog.log"
-        command = "echo \"" + _type + ": " + _error_log + "\" | tee -a " + localization_log_file + " > /dev/null"
-        self.functionsClass.exec_command(command)
-
     def get_bookmarks_path(self, menu):
-        if self.key_with_files_manager in self.json_data.keys():
-            json_paths = self.json_data[self.key_with_files_manager]
-            key_command = "filesManagerCmd"
-            key_bookmark_file = "bookmarkFile"
-            key_name_menu = "Name"
-            if key_command in json_paths.keys() and key_bookmark_file in json_paths.keys() and key_name_menu in json_paths.keys():
-                bookmark_file = str(json_paths[key_bookmark_file])
-                bookmark_file = bookmark_file.replace(self.homeIdentifyString, self.home)
-                command = json_paths[key_command]
-
-                # Name Menu
-                name_menu = "Localizations"
-                if json_paths[key_name_menu] != "":
-                    name_menu = json_paths[key_name_menu]
-
-                # Create menu localizations and read file
-                if self.functionsClass.checkFileExist(bookmark_file):
-                    
-                    # Create menu localizations
-                    sub_menu_item = Gtk.MenuItem(name_menu)
-                    sub_menu = Gtk.Menu()
-                    
-                    # Read file
-                    _file = open(bookmark_file, 'r')
-                    lines = list(_file.readlines())
-                    for line in lines:
-                        # Get name of Item
-                        name_item = ""
-                        array_line = line.split(" ")
-
-                        if len(array_line) == 1:
-                            array_line_with_len_one = line.split("/")
-                            name_item = array_line_with_len_one[-1] # Last element
-                        else:
-                            index = 0
-                            for value in array_line:
-                                if index == 0:
-                                    index += 1
-                                else:
-                                    name_item += " " + value
-                        
-                        # Insert o menu
-                        _decode_status = False
-                        try:
-                            name_item = urllib.parse.unquote(name_item)
-                            _decode_status = True
-                        except Exception as e:
-                            self.set_log('Error convert url character', str(e.args))
-
-                        if not _decode_status:
-                            try:
-                                name_item = name_item.decode('UTF-8', 'strict')
-                                _decode_status = True
-                            except Exception as e:
-                                self.set_log('Error convert string character', str(e.args))
-                        
-                        # Trim character
-                        name_item = name_item.strip('\t\n\r')
-                        line = line.strip('\t\n\r')
-                        array_line[0] = str(array_line[0]).strip('\t\n\r')
-                        
-                        # Activate command and insert on menu item
-                        menu_item = Gtk.MenuItem(name_item)                        
-                        command_to_menu = command + " \"" + array_line[0] + "\""
-                        menu_item.connect('activate', self.lauch_desktop, command_to_menu)
-
-                        # Insert on sub menu
-                        sub_menu.append(menu_item)
-                    
-                    # Insert sub menu on menu
-                    sub_menu_item.set_submenu(sub_menu)
-                    menu.append(sub_menu_item)
-
-                    # Close file
-                    _file.close()            
-
-            # Delete element
-            self.json_data.pop(self.key_with_files_manager, None)
-
-    """
-        Sort list based on name app
-    """
-    def sort_app_list(self, array_name_app_no_sorted):
-        array_name_sorted_upper = []
-        array_name_sorted = []
-
-        # Upper all name app
-        for name in array_name_app_no_sorted:
-            array_name_sorted_upper.append(name.upper())
-
-        # Sorted List Upper
-        array_name_sorted_upper = sorted(array_name_sorted_upper)
-
-        # Sorted original name
-        for upper_name in array_name_sorted_upper:
-            for original_name in array_name_app_no_sorted:
-                if upper_name == original_name.upper():
-                    array_name_sorted.append(original_name)
-
-        # Return list of name app sorted
-        return array_name_sorted
+        # Create menu localizations and read file
+        if self.functions.checkFileExist(self.favorites_files_manager.bookmark_file):
             
+            # Create menu localizations
+            sub_menu_item = Gtk.MenuItem(self.favorites_files_manager.name)
+            sub_menu = Gtk.Menu()
+            
+            # Read file
+            _file = open(self.favorites_files_manager.bookmark_file, 'r')
+            lines = list(_file.readlines())
+            for line in lines:
+                # Get name of Item
+                name_item = ""
+                array_line = line.split(" ")
+
+                if len(array_line) == 1:
+                    array_line_with_len_one = line.split("/")
+                    name_item = array_line_with_len_one[-1] # Last element
+                else:
+                    index = 0
+                    for value in array_line:
+                        if index == 0:
+                            index += 1
+                        else:
+                            name_item += " " + value
+                
+                # Insert o menu
+                _decode_status = False
+                try:
+                    name_item = urllib.parse.unquote(name_item)
+                    _decode_status = True
+                except Exception as e:
+                    self.functions.set_log('Error convert url character', str(e.args))
+
+                if not _decode_status:
+                    try:
+                        name_item = name_item.decode('UTF-8', 'strict')
+                        _decode_status = True
+                    except Exception as e:
+                        self.functions.set_log('Error convert string character', str(e.args))
+                
+                # Trim character
+                name_item = name_item.strip('\t\n\r')
+                line = line.strip('\t\n\r')
+                array_line[0] = str(array_line[0]).strip('\t\n\r')
+                
+                # Activate command and insert on menu item
+                menu_item = Gtk.MenuItem(name_item)                        
+                command_to_menu = self.favorites_files_manager.files_manager_cmd + " \"" + array_line[0] + "\""
+                menu_item.connect('activate', self.lauch_desktop, command_to_menu)
+
+                # Insert on sub menu
+                sub_menu.append(menu_item)
+            
+            # Insert sub menu on menu
+            sub_menu_item.set_submenu(sub_menu)
+            menu.append(sub_menu_item)
+
+            # Close file
+            _file.close()  
 
     """
         Check if Operating System is permited
@@ -190,7 +138,7 @@ class FavoritesAppsIndicator:
 
         for operating_system in not_permited_so_list:
             command = "lsb_release -a | grep -ci \"" + operating_system + "\""
-            result = int(self.functionsClass.exec_command_get_output(command))
+            result = int(self.functions.exec_command_get_output(command))
             if (result > 0):
                 is_permited = False
                 break
@@ -202,10 +150,11 @@ class FavoritesAppsIndicator:
         Verify is desktop file exist or not
     """
     def is_desktop_file_exist(self, desktop_file):
-        for path in self.path_desktop_files:
-            file = path + desktop_file
-            if self.functionsClass.checkFileExist(file):
-                return file
+        for (key, path) in self.path_desktop_files.object_interface.items():
+            if isinstance(path, str):
+                file = path + desktop_file
+                if self.functions.checkFileExist(file):
+                    return file
 
         # Return false desktop file not exist
         return False
@@ -215,7 +164,7 @@ class FavoritesAppsIndicator:
     """
     def lauch_desktop(self, source, command):
         cmd_to_launch = command + " &"
-        self.functionsClass.exec_command(cmd_to_launch)
+        self.functions.exec_command(cmd_to_launch)
 
     """
         Return Name by type
@@ -231,7 +180,7 @@ class FavoritesAppsIndicator:
             else:
                 command = "grep 'Icon=' \"" + file + "\" | head -1 | cut -d \"=\" -f 2-"
 
-            icon = self.functionsClass.exec_command_get_output(command)
+            icon = self.functions.exec_command_get_output(command)
 
         # Return icon
         return icon
@@ -239,40 +188,40 @@ class FavoritesAppsIndicator:
     """
         Return Icon from desktop files
     """
-    def get_icon(self, desktop_file):
-        file = self.is_desktop_file_exist(desktop_file)
-        icon = None
-        if file:
-            # Init Image Gtk
-            image = Gtk.Image()
+    def get_icon(self, desktop_file_icon, is_icon = False):
+        icon = None if not is_icon else desktop_file_icon
+        if not is_icon:
+            file = self.is_desktop_file_exist(desktop_file_icon)
+            if file:
+                # Get icon by locale
+                icon = self.get_icon_by_type(file)
 
-            # Get icon by locale
-            icon = self.get_icon_by_type(file)
+                # Get default icon
+                if not icon or icon == "":
+                    icon = self.get_icon_by_type(file, 1)
 
-            # Get default icon
-            if not icon or icon == "":
-                icon = self.get_icon_by_type(file, 1)
+        # Init Image Gtk
+        image = Gtk.Image()
 
-            # Select type of icon
-            if self.functionsClass.checkFileExist(icon):
-                image.set_from_file(icon)
-            else:
-                image.set_from_icon_name(icon, Gtk.IconSize.MENU)
+        # Select type of icon
+        if self.functions.checkFileExist(icon):
+            image.set_from_file(icon)
+        else:
+            image.set_from_icon_name(icon, Gtk.IconSize.MENU)
 
-            # Return image
-            return image
+        # Return image
+        return image
 
     """
         Return Icon from desktop files
     """
     def get_command(self, desktop_file):
         file = self.is_desktop_file_exist(desktop_file)
-        command = None
 
         if file:
             # Check if to run on terminal
             cmd_get_run_on_terminal = "grep 'Terminal=' \"" + file + "\" | cut -d '=' -f 2-"
-            is_launch_terminal = self.functionsClass.exec_command_get_output(cmd_get_run_on_terminal)
+            is_launch_terminal = self.functions.exec_command_get_output(cmd_get_run_on_terminal)
 
             # finds the line which starts with Exec
             get_command = "cat \"" + file + "\" | grep 'Exec='"
@@ -286,19 +235,16 @@ class FavoritesAppsIndicator:
             # removes any arguments - %u, %f etc
             get_command = get_command + " | sed 's/%.//'"
 
-            # removes any arguments - '--'
-            get_command = get_command + " | sed 's/--.*//'"
-
             # removes " around command (if present) - Activate if necessary
             # get_command = get_command + " | sed 's/^\"//g' | sed 's/\" *$//g'"
 
             # Get command on desktop file
-            command_on_desktop_file = self.functionsClass.exec_command_get_output(get_command)
+            command_on_desktop_file = self.functions.exec_command_get_output(get_command)
 
             # Return command
             if is_launch_terminal == "True" or is_launch_terminal == "true":
                 cmd_to_get_default_terminal = "readlink -f $(command -v x-terminal-emulator)"
-                default_terminal = self.functionsClass.exec_command_get_output(cmd_to_get_default_terminal)
+                default_terminal = self.functions.exec_command_get_output(cmd_to_get_default_terminal)
 
                 return default_terminal + " -e \"" + command_on_desktop_file + "\""
             else:
@@ -326,7 +272,7 @@ class FavoritesAppsIndicator:
             command = command + " | head -1"  # only use the first line, in case there are multiple
 
         # Get Name
-        name = self.functionsClass.exec_command_get_output(command)
+        name = self.functions.exec_command_get_output(command)
 
         # Return name
         return name
@@ -369,93 +315,69 @@ class FavoritesAppsIndicator:
         else:
             return None
 
-    """
-        Return list sorted of infos apps
-    """
-    def create_all_info_entry_menu(self, list_desktop_file):
-        array_app_action_info = []
-        array_app_action_info_sorted = []
-        array_name_app = []
+    def insert_items_on_menu_or_sub_menu(self, menu_or_sub_menu, name, command, icon):
+        menu_item = Gtk.ImageMenuItem(name)
+        menu_item.set_image(icon)
+        menu_item.set_always_show_image(True)
+        menu_item.connect('activate', self.lauch_desktop, command)
+        menu_or_sub_menu.append(menu_item)
 
-        for desktop_file in list_desktop_file:
-            info_desktop_file = self.get_desktop_necessary_info(desktop_file)
+    def insert_on_menu(self, menu, list_items):
+        # Create Menu or Sub menu
+        for value in list_items:
+            self.app_info.setAppInfo(value)
 
-            # If name app exist
-            if info_desktop_file is not None:
-                name_app = info_desktop_file["name"]
-                array_name_app.append(name_app)
-                array_app_action_info.append(info_desktop_file)
-
-        # Sort list app name
-        array_name_app = self.sort_app_list(array_name_app)
-
-        # Create sorted list to return
-        for name_app in array_name_app:
-            for value in array_app_action_info:
-                if name_app == value["name"]:
-                    array_app_action_info_sorted.append(value)
-
-        # Return All info app
-        return array_app_action_info_sorted
-
+            # If is desktop
+            if self.app_info.isDesktop == 1:
+                info_desktop = self.get_desktop_necessary_info(self.app_info.desktop)
+                if info_desktop is not None:
+                    self.insert_items_on_menu_or_sub_menu(menu, info_desktop["name"], info_desktop["command"], info_desktop["icon"])
+            elif self.app_info.isDesktop == 0:
+                self.app_info.icon = self.get_icon(self.app_info.icon, True)
+                self.insert_items_on_menu_or_sub_menu(menu, self.app_info.name, self.app_info.command, self.app_info.icon)
+                
+        
     """
         Insert items on menu and create sub menu if necessary
     """
-    def insert_on_sub_or_menu(self, menu, list_items, is_sub_menu=False, name_sub_menu=None):
+    def insert_on_sub_menu(self, menu, list_items, name_sub_menu=None):
         # If items for submenus
-        if is_sub_menu and name_sub_menu is not None:
+        if name_sub_menu is not None:
             sub_menu_item = Gtk.MenuItem(name_sub_menu)
             sub_menu = Gtk.Menu()
 
-        # Get list info apps
-        list_info_apps = self.create_all_info_entry_menu(list_items)
+            # Create Menu or Sub menu
+            for value in list_items:
+                self.app_info.setAppInfo(value)
 
-        # Create Menu or Sub menu
-        for value in list_info_apps:
-            # Get icon and command
-            name = value["name"]
-            icon = value["icon"]
-            command = value["command"]
+                # If is desktop
+                if self.app_info.isDesktop == 1:
+                    info_desktop = self.get_desktop_necessary_info(self.app_info.desktop)
+                    if info_desktop is not None:
+                        self.insert_items_on_menu_or_sub_menu(sub_menu, info_desktop["name"], info_desktop["command"], info_desktop["icon"])
+                elif self.app_info.isDesktop == 0:
+                    self.app_info.icon = self.get_icon(self.app_info.icon, True)
+                    self.insert_items_on_menu_or_sub_menu(sub_menu, self.app_info.name, self.app_info.command, self.app_info.icon)
 
-            # Insert o menu
-            menu_item = Gtk.ImageMenuItem(name)
-            menu_item.set_image(icon)
-            menu_item.set_always_show_image(True)
-            menu_item.connect('activate', self.lauch_desktop, command)
-
-            # If submenu append on submenu else on menu
-            if is_sub_menu:
-                sub_menu.append(menu_item)
-            else:
-                menu.append(menu_item)
-
-        # If submenu append submenu on menu
-        if is_sub_menu and name_sub_menu is not None:
+            # If submenu append submenu on menu
             sub_menu_item.set_submenu(sub_menu)
             menu.append(sub_menu_item)
+                
 
     """
         Create Menu
     """
     def create_menu(self):
         menu = Gtk.Menu()
-        key_app = "apps"
-        key_separator = "separator_"
-
         for (key, value) in self.json_data.items():
             if self.key_comment_JsonFile in key:
                 pass
-            elif self.key_with_files_manager == key:
-                pass
-            elif self.key_with_path == key:
-                pass
-            elif key_app == key and value:
-                self.insert_on_sub_or_menu(menu, value)
-            elif key_separator in key and value:
+            elif self.key_app_no_menu == key and value:
+                self.insert_on_menu(menu, value)
+            elif self.key_separator in key and value:
                 menu.append(Gtk.SeparatorMenuItem())
             else:
-                if value[key_app]:
-                    self.insert_on_sub_or_menu(menu, value[key_app], True, key)
+                self.insert_on_sub_menu(menu, value, key)
 
         # Insert Separator
         menu.append(Gtk.SeparatorMenuItem())
@@ -485,7 +407,8 @@ class FavoritesAppsIndicator:
     """
     def update_menu(self, source):
         # Get new json file
-        self.json_data = self.read_json_file()
+        self.json_data = self.functions.read_json_file(self.json_file)
+        self.favorites_files_manager = FavoritesFilesManagerInterface(self.json_data)
 
         # update menu
         GObject.idle_add(
@@ -494,14 +417,12 @@ class FavoritesAppsIndicator:
         )
 
         # Update info stats config_file
-        info_stats_config_file = self.functionsClass.exec_command_get_output(self.cmd_stat_json_file)
+        info_stats_config_file = self.functions.exec_command_get_output(self.cmd_stat_json_file)
         if info_stats_config_file != self.stats_config_file:
             self.stats_config_file = info_stats_config_file
 
-        command = self.zenity_cmd + "\"Update Favorites Apps Done.\""
-        print(command)
-        self.functionsClass.exec_command(command)
-
+        # Print notifications
+        self.functions.print_notifications("\"Update Favorites Apps Done.\"")
 
     """
         Service Update Menu
@@ -516,7 +437,7 @@ class FavoritesAppsIndicator:
 
         # Monitor json file
         while not self.stop_thread:
-            info_stats_config_file = self.functionsClass.exec_command_get_output(self.cmd_stat_json_file)
+            info_stats_config_file = self.functions.exec_command_get_output(self.cmd_stat_json_file)
             if info_stats_config_file != self.stats_config_file:
                 self.stats_config_file = info_stats_config_file
 
@@ -537,7 +458,7 @@ class FavoritesAppsIndicator:
             msg = "\"Hit Max changes on JSON File was reached.\n"
             msg = msg + "New changes will be not detected.\n"
             msg = msg + "Please, restart if you want to detect new changes.\""
-            self.functionsClass.exec_command(self.zenity_cmd + msg)
+            self.functions.print_notifications(msg)
             time.sleep(2)
             exit(1)
 
