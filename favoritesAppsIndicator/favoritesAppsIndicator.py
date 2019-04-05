@@ -277,7 +277,6 @@ class FavoritesAppsIndicator:
         # Return name
         return name
 
-
     """
         Return name app from desktop files
     """
@@ -315,6 +314,9 @@ class FavoritesAppsIndicator:
         else:
             return None
 
+    """[summary]
+        Insert items on menu or sub menu
+    """
     def insert_items_on_menu_or_sub_menu(self, menu_or_sub_menu, name, command, icon):
         menu_item = Gtk.ImageMenuItem(name)
         menu_item.set_image(icon)
@@ -322,7 +324,59 @@ class FavoritesAppsIndicator:
         menu_item.connect('activate', self.lauch_desktop, command)
         menu_or_sub_menu.append(menu_item)
 
+    """
+        Sort list based on name app
+    """
+    def sort_app_list(self, array_name_app_no_sorted):
+        array_name_sorted_upper = []
+        array_name_sorted = []
+
+        # Upper all name app
+        for name in array_name_app_no_sorted:
+            array_name_sorted_upper.append(name.upper())
+
+        # Sorted List Upper
+        array_name_sorted_upper = sorted(array_name_sorted_upper)
+
+        # Sorted original name
+        for upper_name in array_name_sorted_upper:
+            for original_name in array_name_app_no_sorted:
+                if upper_name == original_name.upper():
+
+                    # if name not exist on array, then  insert
+                    if original_name not in array_name_sorted:
+                        array_name_sorted.append(original_name)
+
+        # Return list of name app sorted
+        return array_name_sorted
+    
+    """[summary]
+        Sort names of names app and insert on menu or sub menu sorted by names
+    """
+    def sort_and_insert_items(self, menu_or_sub_menu, array_with_data = [], array_with_names_no_sorted = []):
+        array_with_names_sorted = self.sort_app_list(array_with_names_no_sorted)
+        for name in array_with_names_sorted:
+            #print(name)
+            for data in array_with_data:
+                #print(data)
+                if data[0] == name:
+                    self.insert_items_on_menu_or_sub_menu(menu_or_sub_menu, data[0], data[1], data[2])
+                    break
+
+    """[summary]
+        Insert on array with data and array with names no sorted
+    """
+    def insert_array_with_data_and_no_sorted_names(self, array_with_data, array_with_names_no_sorted, name, command, icon):
+        array_with_names_no_sorted.append(name)
+        array_with_data.append([name, command, icon])
+
+    """
+        Insert items on menu if necessary
+    """
     def insert_on_menu(self, menu, list_items):
+        array_with_names_no_sorted = []
+        array_with_data = []
+
         # Create Menu or Sub menu
         for value in list_items:
             self.app_info.setAppInfo(value)
@@ -331,18 +385,30 @@ class FavoritesAppsIndicator:
             if self.app_info.isDesktop == 1:
                 info_desktop = self.get_desktop_necessary_info(self.app_info.desktop)
                 if info_desktop is not None:
-                    self.insert_items_on_menu_or_sub_menu(menu, info_desktop["name"], info_desktop["command"], info_desktop["icon"])
+                    self.insert_array_with_data_and_no_sorted_names(
+                        array_with_data,
+                        array_with_names_no_sorted,
+                        info_desktop["name"], info_desktop["command"], info_desktop["icon"]
+                    )
             elif self.app_info.isDesktop == 0:
                 self.app_info.icon = self.get_icon(self.app_info.icon, True)
-                self.insert_items_on_menu_or_sub_menu(menu, self.app_info.name, self.app_info.command, self.app_info.icon)
-                
+                self.insert_array_with_data_and_no_sorted_names(
+                    array_with_data,
+                    array_with_names_no_sorted,
+                    self.app_info.name, self.app_info.command, self.app_info.icon
+                )
         
+        # Insert data on sub_menu
+        self.sort_and_insert_items(menu, array_with_data, array_with_names_no_sorted)
+   
     """
-        Insert items on menu and create sub menu if necessary
+        Insert items on sub menu if necessary
     """
-    def insert_on_sub_menu(self, menu, list_items, name_sub_menu=None):
+    def insert_on_sub_menu(self, menu, list_items, name_sub_menu = None):
         # If items for submenus
         if name_sub_menu is not None:
+            array_with_names_no_sorted = []
+            array_with_data = []
             sub_menu_item = Gtk.MenuItem(name_sub_menu)
             sub_menu = Gtk.Menu()
 
@@ -354,15 +420,25 @@ class FavoritesAppsIndicator:
                 if self.app_info.isDesktop == 1:
                     info_desktop = self.get_desktop_necessary_info(self.app_info.desktop)
                     if info_desktop is not None:
-                        self.insert_items_on_menu_or_sub_menu(sub_menu, info_desktop["name"], info_desktop["command"], info_desktop["icon"])
+                        self.insert_array_with_data_and_no_sorted_names(
+                            array_with_data,
+                            array_with_names_no_sorted,
+                            info_desktop["name"], info_desktop["command"], info_desktop["icon"]
+                        )
                 elif self.app_info.isDesktop == 0:
                     self.app_info.icon = self.get_icon(self.app_info.icon, True)
-                    self.insert_items_on_menu_or_sub_menu(sub_menu, self.app_info.name, self.app_info.command, self.app_info.icon)
+                    self.insert_array_with_data_and_no_sorted_names(
+                        array_with_data,
+                        array_with_names_no_sorted,
+                        self.app_info.name, self.app_info.command, self.app_info.icon
+                    )
+            
+            # Insert data on sub_menu
+            self.sort_and_insert_items(sub_menu, array_with_data, array_with_names_no_sorted)
 
             # If submenu append submenu on menu
             sub_menu_item.set_submenu(sub_menu)
             menu.append(sub_menu_item)
-                
 
     """
         Create Menu

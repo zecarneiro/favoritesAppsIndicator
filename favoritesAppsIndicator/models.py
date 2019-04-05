@@ -33,11 +33,13 @@ class AppInfoInterface:
             if app_info_object["isDesktop"] == 1:
                 self.desktop = app_info_object["desktop"]
                 self.isDesktop = 1
-            else:
+            elif app_info_object["isDesktop"] == 0:
                 self.command = app_info_object["command"]
                 self.icon = app_info_object["icon"]
                 self.name = app_info_object["name"]
                 self.isDesktop = 0
+            else:
+                self.__sefDefault()
         except Exception as e:
             msg = "\"ERROR on format of app info\""
             self.functions.print_notifications(msg)
